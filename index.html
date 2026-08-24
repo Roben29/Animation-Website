@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ferrari — Beyond Limits</title>
+  <meta name="description" content="Experience the Ferrari like never before. A cinematic scroll-driven journey through engineering perfection." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100;200;300;400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root { --red: #e01020; --gold: #c8a050; --dark: #080808; --mid: #111111; }
+    html { scroll-behavior: auto; }
+    body { background: var(--dark); color: #fff; font-family: 'Outfit', sans-serif; overflow-x: hidden; }
+
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 22px 48px;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.85) 0%, transparent 100%);
+      pointer-events: none;
+    }
+    .nav-logo { font-size: 1.1rem; font-weight: 700; letter-spacing: 0.25em; color: var(--gold); text-transform: uppercase; }
+    .nav-logo span { color: var(--red); }
+    .nav-tag { font-size: 0.72rem; font-weight: 300; letter-spacing: 0.18em; color: rgba(255,255,255,0.45); text-transform: uppercase; }
+
+    #scroll-container { height: 5000px; position: relative; }
+
+    #canvas-wrap {
+      position: sticky; top: 0; height: 100vh; width: 100%;
+      overflow: hidden; display: flex; align-items: center; justify-content: center;
+    }
+    canvas#hero-canvas { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+    .overlay-top { position: absolute; top: 0; left: 0; right: 0; height: 180px; background: linear-gradient(to bottom, rgba(8,8,8,1) 0%, transparent 100%); pointer-events: none; }
+    .overlay-bottom { position: absolute; bottom: 0; left: 0; right: 0; height: 180px; background: linear-gradient(to top, rgba(8,8,8,1) 0%, transparent 100%); pointer-events: none; }
+
+    #hud { position: absolute; inset: 0; pointer-events: none; display: flex; flex-direction: column; justify-content: space-between; padding: 110px 48px 60px; }
+    .hud-top { display: flex; align-items: flex-start; justify-content: space-between; }
+    .hud-title-block { max-width: 560px; }
+    .hud-eyebrow { font-size: 0.68rem; font-weight: 400; letter-spacing: 0.32em; color: var(--red); text-transform: uppercase; margin-bottom: 16px; opacity: 0; transform: translateY(12px); transition: opacity 0.8s ease, transform 0.8s ease; }
+    .hud-headline { font-family: 'Playfair Display', serif; font-size: clamp(2.8rem, 5vw, 5rem); font-weight: 700; line-height: 1.05; color: #fff; opacity: 0; transform: translateY(20px); transition: opacity 0.9s ease 0.1s, transform 0.9s ease 0.1s; }
+    .hud-headline em { color: var(--red); font-style: normal; }
+    .hud-sub { margin-top: 20px; font-size: 0.9rem; font-weight: 300; color: rgba(255,255,255,0.5); letter-spacing: 0.04em; line-height: 1.8; max-width: 380px; opacity: 0; transform: translateY(12px); transition: opacity 0.9s ease 0.25s, transform 0.9s ease 0.25s; }
+    .hud-stats { display: flex; flex-direction: column; gap: 20px; align-items: flex-end; }
+    .stat { text-align: right; opacity: 0; transform: translateX(16px); transition: opacity 0.7s ease, transform 0.7s ease; }
+    .stat-value { font-size: 1.9rem; font-weight: 200; letter-spacing: 0.06em; color: #fff; line-height: 1; }
+    .stat-value span { color: var(--gold); font-size: 0.95rem; }
+    .stat-label { font-size: 0.62rem; font-weight: 400; letter-spacing: 0.22em; color: rgba(255,255,255,0.35); text-transform: uppercase; margin-top: 4px; }
+    .hud-bottom { display: flex; align-items: flex-end; justify-content: space-between; }
+    .scroll-hint { display: flex; align-items: center; gap: 14px; opacity: 0; transition: opacity 1s ease 0.8s; }
+    .scroll-hint-line { width: 48px; height: 1px; background: var(--red); animation: pulseWidth 2s ease-in-out infinite; }
+    @keyframes pulseWidth { 0%, 100% { width: 48px; opacity: 1; } 50% { width: 72px; opacity: 0.6; } }
+    .scroll-hint-text { font-size: 0.65rem; font-weight: 400; letter-spacing: 0.28em; color: rgba(255,255,255,0.38); text-transform: uppercase; }
+    .frame-counter { font-size: 0.65rem; font-weight: 300; letter-spacing: 0.2em; color: rgba(255,255,255,0.22); font-variant-numeric: tabular-nums; opacity: 0; transition: opacity 1s ease 0.6s; }
+    .frame-counter strong { color: rgba(255,255,255,0.5); }
+
+    #progress-bar { position: fixed; bottom: 0; left: 0; height: 2px; background: linear-gradient(90deg, var(--red), var(--gold)); width: 0%; z-index: 200; transition: width 0.05s linear; box-shadow: 0 0 8px var(--red); }
+
+    .section { background: var(--dark); padding: 120px 48px; position: relative; z-index: 10; }
+    .section-inner { max-width: 1100px; margin: 0 auto; }
+    .section-tag { font-size: 0.65rem; letter-spacing: 0.3em; color: var(--red); text-transform: uppercase; margin-bottom: 20px; }
+    .section-title { font-family: 'Playfair Display', serif; font-size: clamp(2rem, 3.5vw, 3.2rem); font-weight: 700; line-height: 1.15; margin-bottom: 24px; }
+    .section-title em { color: var(--gold); font-style: normal; }
+    .section-body { font-size: 1rem; font-weight: 300; color: rgba(255,255,255,0.55); line-height: 1.9; max-width: 640px; }
+    .spec-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; overflow: hidden; margin-top: 60px; }
+    .spec-item { background: var(--mid); padding: 36px 28px; transition: background 0.3s; }
+    .spec-item:hover { background: #1a1a1a; }
+    .spec-num { font-size: 2.6rem; font-weight: 200; letter-spacing: 0.04em; color: #fff; }
+    .spec-num em { font-size: 1.2rem; color: var(--gold); font-style: normal; }
+    .spec-desc { font-size: 0.72rem; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(255,255,255,0.35); margin-top: 8px; }
+    .divider { width: 60px; height: 1px; background: linear-gradient(90deg, var(--red), transparent); margin: 48px 0; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center; }
+    @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; gap: 40px; } nav { padding: 18px 24px; } #hud { padding: 90px 24px 40px; } .section { padding: 80px 24px; } }
+    footer { background: #050505; border-top: 1px solid rgba(255,255,255,0.05); padding: 48px; display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem; color: rgba(255,255,255,0.22); letter-spacing: 0.1em; }
+    footer .footer-brand { color: var(--gold); font-weight: 600; letter-spacing: 0.25em; }
+    .reveal { opacity: 0; transform: translateY(30px); transition: opacity 0.8s ease, transform 0.8s ease; }
+    .reveal.visible { opacity: 1; transform: translateY(0); }
+    body.loaded .hud-eyebrow, body.loaded .hud-headline, body.loaded .hud-sub, body.loaded .scroll-hint, body.loaded .frame-counter { opacity: 1; transform: none; }
+    body.loaded .stat { opacity: 1; transform: none; }
+    #loader { position: fixed; inset: 0; background: var(--dark); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; transition: opacity 0.6s ease, visibility 0.6s ease; }
+    #loader.hidden { opacity: 0; visibility: hidden; }
+    .loader-brand { font-size: 1rem; font-weight: 700; letter-spacing: 0.35em; color: var(--gold); text-transform: uppercase; }
+    .loader-track { width: 220px; height: 1px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
+    .loader-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--red), var(--gold)); border-radius: 2px; transition: width 0.15s ease; }
+    .loader-pct { font-size: 0.65rem; color: rgba(255,255,255,0.3); letter-spacing: 0.25em; font-variant-numeric: tabular-nums; }
+  </style>
+</head>
+<body>
+
+  <div id="loader">
+    <div class="loader-brand">Ferrari &nbsp;&middot;&nbsp; SF90</div>
+    <div class="loader-track"><div class="loader-fill" id="loader-fill"></div></div>
+    <div class="loader-pct" id="loader-pct">Loading &mdash; 0%</div>
+  </div>
+
+  <div id="progress-bar"></div>
+
+  <nav>
+    <div class="nav-logo"><span>F</span>errari</div>
+    <div class="nav-tag">SF90 Stradale &middot; Experience</div>
+  </nav>
+
+  <div id="scroll-container">
+    <div id="canvas-wrap">
+      <canvas id="hero-canvas"></canvas>
+      <div class="overlay-top"></div>
+      <div class="overlay-bottom"></div>
+      <div id="hud">
+        <div class="hud-top">
+          <div class="hud-title-block">
+            <div class="hud-eyebrow">The Pinnacle of Performance</div>
+            <div class="hud-headline">Beyond<br/><em>Limits.</em></div>
+            <div class="hud-sub">1,000 horsepower. Three electric motors. A hybrid hypercar engineered to redefine what is humanly possible on road and track.</div>
+          </div>
+          <div class="hud-stats">
+            <div class="stat">
+              <div class="stat-value">1000 <span>hp</span></div>
+              <div class="stat-label">Total Power Output</div>
+            </div>
+            <div class="stat" style="transition-delay:0.1s">
+              <div class="stat-value">2.5 <span>s</span></div>
+              <div class="stat-label">0 &ndash; 100 km/h</div>
+            </div>
+            <div class="stat" style="transition-delay:0.2s">
+              <div class="stat-value">340 <span>km/h</span></div>
+              <div class="stat-label">Top Speed</div>
+            </div>
+          </div>
+        </div>
+        <div class="hud-bottom">
+          <div class="scroll-hint">
+            <div class="scroll-hint-line"></div>
+            <div class="scroll-hint-text">Scroll to experience</div>
+          </div>
+          <div class="frame-counter" id="frame-counter">
+            Frame <strong id="fc-current">001</strong> / <strong>239</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- <section class="section">
+    <div class="section-inner">
+      <div class="two-col">
+        <div>
+          <p class="section-tag reveal">Engineering Excellence</p>
+          <h2 class="section-title reveal">The <em>SF90</em><br/>Stradale</h2>
+          <div class="divider reveal"></div>
+          <p class="section-body reveal">The Ferrari SF90 Stradale is the most powerful production Ferrari ever built. Powered by a turbocharged V8 engine paired with three electric motors it delivers an extraordinary 1,000 cv in a package that redefines the supercar segment.</p>
+        </div>
+        <div>
+          <p class="section-body reveal" style="color:rgba(255,255,255,0.7)">Its name pays homage to the 90th anniversary of Scuderia Ferrari, and every component speaks to that racing heritage. The carbon fiber monocoque, the active aero, the all-new 8-speed dual-clutch transmission — all born from Formula 1 know-how, made road legal.</p>
+        </div>
+      </div>
+      <div class="spec-grid" style="margin-top:80px">
+        <div class="spec-item reveal"><div class="spec-num">1000<em> cv</em></div><div class="spec-desc">Total System Output</div></div>
+        <div class="spec-item reveal" style="transition-delay:0.1s"><div class="spec-num">2.5<em> s</em></div><div class="spec-desc">0 to 100 km/h</div></div>
+        <div class="spec-item reveal" style="transition-delay:0.2s"><div class="spec-num">6.7<em> s</em></div><div class="spec-desc">0 to 200 km/h</div></div>
+        <div class="spec-item reveal" style="transition-delay:0.3s"><div class="spec-num">340<em> km/h</em></div><div class="spec-desc">Top Speed</div></div>
+        <div class="spec-item reveal" style="transition-delay:0.4s"><div class="spec-num">1570<em> kg</em></div><div class="spec-desc">Dry Weight</div></div>
+        <div class="spec-item reveal" style="transition-delay:0.5s"><div class="spec-num">7.9<em> L/100</em></div><div class="spec-desc">Fuel Consumption</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" style="background: #0d0d0d; padding-top: 0;">
+    <div class="section-inner">
+      <p class="section-tag reveal">Powertrain</p>
+      <h2 class="section-title reveal">Three Motors.<br/><em>One Vision.</em></h2>
+      <div class="divider reveal"></div>
+      <div class="two-col">
+        <p class="section-body reveal">The turbocharged 4.0-litre V8 produces 780 cv on its own. The three electric motors lift the total to 1,000 cv. Together they power all four wheels with a precision that only Ferrari's e-Diff and SSC technology can master.</p>
+        <p class="section-body reveal">Four driving modes — eDrive, Hybrid, Performance, and Qualify — let you choose between pure electric silence and maximum attack mode. The car adapts. You command.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="footer-brand">FERRARI</div>
+    <div>&copy; 2024 Ferrari N.V. All rights reserved.</div>
+    <div>SF90 STRADALE</div>
+  </footer> -->
+
+  <script>
+    const TOTAL_FRAMES = 239;
+    const FRAME_PATH = (n) => 'frame_' + String(n).padStart(3,'0') + '.jpg';
+    const canvas = document.getElementById('hero-canvas');
+    const ctx = canvas.getContext('2d');
+    const loader = document.getElementById('loader');
+    const loaderFill = document.getElementById('loader-fill');
+    const loaderPct = document.getElementById('loader-pct');
+    const progressBar = document.getElementById('progress-bar');
+    const scrollContainer = document.getElementById('scroll-container');
+    const fcCurrent = document.getElementById('fc-current');
+    const frames = new Array(TOTAL_FRAMES);
+    let currentFrame = 0;
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      drawFrame(currentFrame);
+    }
+
+    function drawFrame(index) {
+      const img = frames[index];
+      if (!img) return;
+      const cw = canvas.width, ch = canvas.height;
+      const iw = img.naturalWidth, ih = img.naturalHeight;
+      const scale = Math.max(cw / iw, ch / ih);
+      const nw = iw * scale, nh = ih * scale;
+      const dx = (cw - nw) / 2, dy = (ch - nh) / 2;
+      ctx.clearRect(0, 0, cw, ch);
+      ctx.drawImage(img, dx, dy, nw, nh);
+    }
+
+    function onScroll() {
+      const containerH = scrollContainer.offsetHeight;
+      const viewH = window.innerHeight;
+      const scrollTop = window.scrollY;
+      const maxScroll = containerH - viewH;
+      const progress = Math.min(1, Math.max(0, scrollTop / maxScroll));
+      progressBar.style.width = (progress * 100) + '%';
+      const target = Math.round(progress * (TOTAL_FRAMES - 1));
+      if (target !== currentFrame) {
+        currentFrame = target;
+        drawFrame(currentFrame);
+        fcCurrent.textContent = String(currentFrame + 1).padStart(3, '0');
+      }
+    }
+
+    function preload() {
+      return new Promise((resolve) => {
+        let loaded = 0;
+        function tryFinish() {
+          loaded++;
+          const pct = Math.round((loaded / TOTAL_FRAMES) * 100);
+          loaderFill.style.width = pct + '%';
+          loaderPct.textContent = 'Loading \u2014 ' + pct + '%';
+          if (loaded === TOTAL_FRAMES) resolve();
+        }
+        const first = new Image();
+        first.onload = () => { frames[0] = first; resizeCanvas(); drawFrame(0); tryFinish(); };
+        first.onerror = tryFinish;
+        first.src = FRAME_PATH(1);
+        for (let i = 2; i <= TOTAL_FRAMES; i++) {
+          const img = new Image();
+          const idx = i - 1;
+          img.onload = () => { frames[idx] = img; tryFinish(); };
+          img.onerror = tryFinish;
+          img.src = FRAME_PATH(i);
+        }
+      });
+    }
+
+    function observeReveal() {
+      const obs = new IntersectionObserver((entries) => {
+        entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('visible'); obs.unobserve(e.target); } });
+      }, { threshold: 0.15 });
+      document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
+    }
+
+    async function init() {
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+      window.addEventListener('scroll', onScroll, { passive: true });
+      await preload();
+      loader.classList.add('hidden');
+      document.body.classList.add('loaded');
+      drawFrame(0);
+      observeReveal();
+    }
+
+    init();
+  </script>
+</body>
+</html>
